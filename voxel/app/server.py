@@ -2113,15 +2113,15 @@ def create_server():
         loader_mode = _ensure_path(state.loader_mode).upper() or "CMS"
 
         if not setup_path.is_file():
-            _set_status("Missing YAML setup file.")
+            _set_status("Error: Missing YAML setup file.")
             return
         if not tiff_dir.is_dir():
-            _set_status("Missing TIFF directory.")
+            _set_status("Error: Missing TIFF directory.")
             return
         if loader_mode == "ISR":
             spec_path = Path(_ensure_path(state.spec_path)).expanduser()
             if not spec_path.is_file():
-                _set_status("Missing SPEC file for ISR mode.")
+                _set_status("Error: Missing SPEC file for ISR mode.")
                 return
 
         loop = asyncio.get_event_loop()
@@ -2167,7 +2167,7 @@ def create_server():
     async def _do_build_rsm():
         nonlocal current_builder
         if current_setup is None or current_df is None:
-            _set_status("Load data first.")
+            _set_status("Error: Load data first.")
             return
         _apply_setup_overrides(current_setup)
 
@@ -2219,7 +2219,7 @@ def create_server():
     async def _do_regrid():
         nonlocal regrid_volume, regrid_axes
         if current_builder is None:
-            _set_status("Build the RSM map first.")
+            _set_status("Error: Build the RSM map first.")
             return
         # Parse the grid-shape string on the main thread so a malformed value
         # is reported before the worker runs. nx is required; ny/nz may be
@@ -2227,10 +2227,10 @@ def create_server():
         try:
             grid_shape = _parse_grid_shape(getattr(state, "grid_shape", ""))
         except ValueError as exc:
-            _set_status(f"Invalid grid: {exc}")
+            _set_status(f"Error: Invalid grid: {exc}")
             return
         if grid_shape[0] is None:
-            _set_status("Grid X (first value) is required, e.g. 90,*,*")
+            _set_status("Error: Grid X (first value) is required, e.g. 90,*,*")
             return
         loop = asyncio.get_event_loop()
         try:
@@ -2267,7 +2267,7 @@ def create_server():
     @ctrl.set("view_rsm")
     def view_rsm(**kwargs):
         if regrid_volume is None or regrid_axes is None:
-            _set_status("Regrid first.")
+            _set_status("Error: Regrid first.")
             return
         _set_status("Updating 3D view...")
         # Reset the contrast limits to their defaults each time the RSM is
@@ -2700,7 +2700,7 @@ def create_server():
     @ctrl.set("view_intensity")
     def view_intensity(**kwargs):
         if not current_frames:
-            _set_status("No intensity frames. Load data first.")
+            _set_status("Error: No intensity frames. Load data first.")
             return
         n = len(current_frames)
         # Frame-by-frame mode: hide the volume / analysis props and show a
@@ -2759,7 +2759,7 @@ def create_server():
         if frame.ndim != 2:
             frame = np.squeeze(frame)
         if frame.ndim != 2:
-            _set_status(f"Frame {index} is not 2D; cannot display.")
+            _set_status(f"Error: Frame {index} is not 2D; cannot display.")
             return
 
         # Mirror the volume display path: log-compress and frame the colormap
@@ -2886,7 +2886,7 @@ def create_server():
                 play_task = None
             return
         if not current_frames or not bool(getattr(state, "intensity_slider_show", False)):
-            _set_status("Start the intensity viewer (View Intensity) before playing.")
+            _set_status("Error: Start the intensity viewer (View Intensity) before playing.")
             return
         state.intensity_playing = True
         loop = asyncio.get_event_loop()
@@ -2921,7 +2921,7 @@ def create_server():
     def crop_from_roi(**kwargs):
         nonlocal current_df, current_frames, current_builder, regrid_volume, regrid_axes
         if current_df is None or not current_frames:
-            _set_status("Load data before cropping.")
+            _set_status("Error: Load data before cropping.")
             return
         try:
             r0 = int(state.crop_row_min)
@@ -2929,10 +2929,10 @@ def create_server():
             c0 = int(state.crop_col_min)
             c1 = int(state.crop_col_max)
         except (TypeError, ValueError):
-            _set_status("Invalid crop bounds.")
+            _set_status("Error: Invalid crop bounds.")
             return
         if r1 <= r0 or c1 <= c0:
-            _set_status("Crop bounds must have positive area (max > min).")
+            _set_status("Error: Crop bounds must have positive area (max > min).")
             return
         crop_window = ((r0, r1), (c0, c1))
         try:
@@ -3013,7 +3013,7 @@ def create_server():
     @ctrl.set("export_vtr")
     async def export_vtr(**kwargs):
         if current_volume is None or current_axes is None:
-            _set_status("No built volume available for export.")
+            _set_status("Error: No built volume available for export.")
             return
 
         output_path = Path(_ensure_path(state.export_path))
@@ -3041,7 +3041,7 @@ def create_server():
         # Export the raw regridded 3D grid as a compressed TIFF (mirrors the
         # napari widget's on_export_grid).
         if regrid_volume is None:
-            _set_status("Regrid first, then export.")
+            _set_status("Error: Regrid first, then export.")
             return
         try:
             import tifffile
@@ -3073,7 +3073,7 @@ def create_server():
         # .npz (mirrors the napari widget's on_export_edges). Axis names follow
         # the chosen space: Qx/Qy/Qz for q-space, H/K/L for hkl.
         if regrid_volume is None or regrid_axes is None:
-            _set_status("Regrid first, then export.")
+            _set_status("Error: Regrid first, then export.")
             return
         output_path = Path(_ensure_path(state.export_npz_path))
         if output_path.suffix.lower() != ".npz":
@@ -3170,12 +3170,12 @@ def create_server():
 
     def _do_hq_snapshot():
         if current_image is None or render_range is None:
-            _set_status("View an RSM volume before taking a snapshot.")
+            _set_status("Error: View an RSM volume before taking a snapshot.")
             return
         # The snapshot only ever renders an attenuated MIP, so it is meaningful
         # only when the live view is in that mode (mirrors the disabled button).
         if (_ensure_path(getattr(state, "rendering", "")) or "") != "attenuated_mip":
-            _set_status("HQ snapshot is only available in attenuated_mip rendering mode.")
+            _set_status("Error: HQ snapshot is only available in attenuated_mip rendering mode.")
             return
         state.hq_snapshot_busy = True
         state.flush()
@@ -3588,7 +3588,7 @@ def create_server():
     # spherical) the moment the user picks a new one from the dropdown, without
     # needing to toggle the slice off and on again. The select's own
     # ``change=ctrl.update_slices`` handler can miss the fresh value because the
-    # v-model hasn't flushed yet; a state.change observer always sees the new
+    # v-model hasn't flushed yet; a observer always sees the new
     # value, so it re-slices reliably.
     @state.change("slice_cmap", "cyl_cmap", "sph_cmap")
     def _on_slice_cmap_change(**kwargs):
