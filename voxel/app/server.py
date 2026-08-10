@@ -1732,8 +1732,20 @@ def create_server():
         Parses the scan ids from the TIFF filenames and keeps those matching
         the user's scan-range string (e.g. "17-20, 30"). An empty string loads
         everything. Raises ValueError on malformed input.
+
+        CMS filenames have a single scan number per frame, so the parsed
+        scan ids come straight from ``_scan_numbers_in_dir_CMS``. ISR filenames
+        have a (scan_number, data_number) pair; the scan-range text selects
+        whole scan numbers and every data frame within a selected scan is
+        loaded, so only the unique scan numbers are matched here. In both cases
+        the returned list is the scan-number list the loaders'
+        ``selected_scans`` argument expects.
         """
-        scans = _scan_numbers_in_dir_CMS(tiff_dir)
+        loader_mode = _ensure_path(state.loader_mode).upper() or "CMS"
+        if loader_mode == "ISR":
+            scans = sorted({scan for scan, _data in _scan_numbers_in_dir_ISR(tiff_dir)})
+        else:
+            scans = _scan_numbers_in_dir_CMS(tiff_dir)
         if not scans:
             return None
         requested = _parse_scan_list(getattr(state, "scan_range", ""))
@@ -3630,10 +3642,37 @@ def create_server():
         _populate_from_profile(loader_mode)
 
     # When a TIFF directory is chosen, seed the scan-number range from the
-    # filenames so the first DEFAULT_FRAME_COUNT frames are pre-selected.
+    # filenames so roughly the first DEFAULT_FRAME_COUNT frames are
+    # pre-selected (instead of loading every frame at once).
     @state.change("tiff_dir")
     def _on_tiff_dir_change(tiff_dir=None, **kwargs):
-        scans = _scan_numbers_in_dir(tiff_dir)
+        loader_mode = _ensure_path(state.loader_mode).upper() or "CMS"
+        if loader_mode == "ISR":
+            # ISR filenames encode (scan_number, data_number); each scan owns
+            # several data frames. Accumulate whole scans in ascending order
+            # until ~DEFAULT_FRAME_COUNT frames are covered so the viewer
+            # doesn't try to load every frame of every scan at once.
+            pairs = _scan_numbers_in_dir_ISR(tiff_dir)
+            if not pairs:
+                return
+            frames_per_scan = {}
+            for scan, _data in pairs:
+                frames_per_scan[scan] = frames_per_scan.get(scan, 0) + 1
+            scans = sorted(frames_per_scan)
+            chosen = []
+            total = 0
+            for scan in scans:
+                chosen.append(scan)
+                total += frames_per_scan[scan]
+                if total >= DEFAULT_FRAME_COUNT:
+                    break
+            state.scan_range = f"{chosen[0]}-{chosen[-1]}"
+            _set_status(
+                f"Found {len(scans)} scan(s); defaulting to scans "
+                f"{chosen[0]}\u2013{chosen[-1]} ({total} frame(s))."
+            )
+            return
+        scans = _scan_numbers_in_dir_CMS(tiff_dir)
         if not scans:
             return
         first = scans[:DEFAULT_FRAME_COUNT]
