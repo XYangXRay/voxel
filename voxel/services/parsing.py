@@ -57,7 +57,7 @@ def _scan_numbers_in_dir_ISR(tiff_dir: Optional[str]) -> list:
     directory = Path(_ensure_path(tiff_dir)).expanduser()
     if not directory.is_dir():
         return []
-    pattern = re.compile(r"^(?:[^_]+_)*(\d+)_(\d+)_.*\.(tif|tiff)$")
+    pattern = re.compile(r"^(?:[^_]+_)*(\d+)_(\d+)_.*\.tiff$") # copied from ReadFrame in data_io.py
     scans = []
     for path in sorted(
         list(directory.glob("*.tif")) + list(directory.glob("*.tiff"))
