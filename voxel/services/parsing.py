@@ -7,13 +7,14 @@ no VTK or trame dependency, so the data-access layer can be tested and extended
 independently of the UI.
 """
 
-import re
+import re # Python's built in regex module
 from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
 
 from .backend import RSMDataloader_CMS
+from .backend import RSMDataLoader_ISR
 
 
 def _float(value: Optional[object], default: float) -> float:
@@ -27,13 +28,15 @@ def _ensure_path(value: Optional[str]) -> str:
     return str(value).strip() if value is not None else ""
 
 
-def _scan_numbers_in_dir(tiff_dir: Optional[str]) -> list:
+# CMS: 6 or 7 digit scan number is embedded in the TIFF filenames
+# ISR: 2 numbers to parse, e.g. "scan_017_003.tif" (scan_number 17, data_number 3) the intensity viewer 
+# should show all data for the specified scan(s)
+
+def _scan_numbers_in_dir_CMS(tiff_dir: Optional[str]) -> list:
     """Return the scan numbers parsed from TIFF filenames in ``tiff_dir``.
 
-    Mirrors ``RSMDataloader_CMS``'s filename parsing (the original napari
-    behavior) so the Data-tab scan-range inputs reference the real scan ids
-    embedded in the file names rather than positional frame indices. The list
-    is sorted ascending, matching the order the CMS loader presents frames.
+    Mirrors ``RSMDataloader_CMS``'s filename parsing so the Data-tab scan-range 
+    inputs reference the real scan ids embedded in the file names. Sorted in ascending order.
     """
     directory = Path(_ensure_path(tiff_dir)).expanduser()
     if not directory.is_dir():
@@ -46,6 +49,22 @@ def _scan_numbers_in_dir(tiff_dir: Optional[str]) -> list:
         match = pattern.search(path.name)
         if match:
             scans.append(int(match.group(1)))
+    return sorted(scans)
+
+def _scan_numbers_in_dir_ISR(tiff_dir: Optional[str]) -> list:
+    """Return the scan and data numbers parsed from TIFF filenames in ``tiff_dir`` as tuples (scan_number, data_number)."""
+    
+    directory = Path(_ensure_path(tiff_dir)).expanduser()
+    if not directory.is_dir():
+        return []
+    pattern = re.compile(r"^(?:[^_]+_)*(\d+)_(\d+)_.*\.(tif|tiff)$")
+    scans = []
+    for path in sorted(
+        list(directory.glob("*.tif")) + list(directory.glob("*.tiff"))
+    ):
+        match = pattern.search(path.name)
+        if match:
+            scans.append((int(match.group(1)), int(match.group(2))))
     return sorted(scans)
 
 

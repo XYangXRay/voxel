@@ -85,7 +85,8 @@ from voxel.services.backend import (
 from voxel.services.parsing import (
     _float,
     _ensure_path,
-    _scan_numbers_in_dir,
+    _scan_numbers_in_dir_CMS,
+    _scan_numbers_in_dir_ISR,
     _parse_scan_list,
     _parse_ub_matrix,
     _format_ub_matrix,
@@ -1732,7 +1733,7 @@ def create_server():
         the user's scan-range string (e.g. "17-20, 30"). An empty string loads
         everything. Raises ValueError on malformed input.
         """
-        scans = _scan_numbers_in_dir(tiff_dir)
+        scans = _scan_numbers_in_dir_CMS(tiff_dir)
         if not scans:
             return None
         requested = _parse_scan_list(getattr(state, "scan_range", ""))
