@@ -1332,7 +1332,7 @@ def create_server():
         if not show:
             sph_actor.VisibilityOff()
             return
-        center = current_image.GetCenter()
+        center = (0,0,0)
         radius = _float(state.sph_radius, 1.0)
         samples = max(8, int(_float(state.sph_samples, 64)))
         src = vtkSphereSource()
