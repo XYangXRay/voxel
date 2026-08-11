@@ -641,8 +641,9 @@ def create_server():
     # directly in display (pixel) coordinates, so it stays a fixed size in the
     # corner regardless of camera zoom/orbit; the labelled length is recomputed
     # from the camera every render (see _update_scale_bar) so the number tracks
-    # the current zoom. It is shown only for the RSM volume view: reciprocal-
-    # space Q uses 1/Å (or 1/kÅ when the distance is tiny) and HKL uses r.l.u.
+    # the current zoom. It is shown only for the RSM volume view: both Q and HKL
+    # use 1/Å (or 1/kÅ when the distance is tiny), matching napari, since the
+    # coordinate frame is reciprocal space in either space
     # (the raw intensity frame is in detector-pixel space, so no bar is drawn).
     scalebar_pts = vtkPoints()
     scalebar_pts.SetNumberOfPoints(4)
@@ -1591,17 +1592,16 @@ def create_server():
             _scalebar_hide()
             return
 
-        # Format the value + unit: reciprocal-space Q uses 1/Å, switching to
-        # 1/kÅ once the value drops below 1 1/Å (e.g. 0.5 1/Å -> 500 1/kÅ);
-        # crystallographic space uses r.l.u.
-        is_q = (_ensure_path(getattr(state, "space", "q")) or "q").lower() == "q"
-        if is_q:
-            if nice_world < 1.0:
-                label = f"{nice_world * 1000.0:g} 1/k\u00c5"
-            else:
-                label = f"{nice_world:g} 1/\u00c5"
+        # Format the value + unit. Both reciprocal-space Q and HKL use inverse
+        # Ångström, matching napari (scale_bar.unit = "Å⁻¹").
+        # Miller indices are themselves dimensionless, but the underlying
+        # coordinate frame is still reciprocal space, so the ruler is labeled in
+        # 1/Å regardless of space -- switching to 1/kÅ once the value drops below
+        # 1 1/Å (e.g. 0.5 1/Å -> 500 1/kÅ).
+        if nice_world < 1.0:
+            label = f"{nice_world * 1000.0:g} 1/k\u00c5"
         else:
-            label = f"{nice_world:g} r.l.u."
+            label = f"{nice_world:g} 1/\u00c5"
 
         size = render_window.GetSize()
         win_w = int(size[0]) if size and len(size) > 0 else 0
