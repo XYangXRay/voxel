@@ -209,9 +209,12 @@ def create_server():
     # the Z plane tilts about the Qx axis (a Z rotation would be a no-op there).
     # NOTE: unrelated to the diffractometer's phi goniometer angle -- this is a
     # pure rendering transform of the reconstructed Q-space volume.
-    state.setdefault("slice_x_tilt", 0)
-    state.setdefault("slice_y_tilt", 0)
-    state.setdefault("slice_z_tilt", 0)
+    state.setdefault("slice_x_tiltz", 0)
+    state.setdefault("slice_x_tilty", 0)
+    state.setdefault("slice_y_tiltz", 0)
+    state.setdefault("slice_y_tiltx", 0)
+    state.setdefault("slice_z_tiltx", 0)
+    state.setdefault("slice_z_tilty", 0)
     state.setdefault("slice_opacity", 0.8)
     state.setdefault("slice_cmap", "turbo")
     state.setdefault("slice_show_border", True)
@@ -242,7 +245,8 @@ def create_server():
     # cylinder axis aligned with Qz (the classic behavior); a non-zero tilt
     # leans the axis in the Qy-Qz plane so the tube is no longer centered on
     # the z axis.
-    state.setdefault("cyl_tilt", 0)
+    state.setdefault("cyl_tiltx", 0)
+    state.setdefault("cyl_tilty", 0)
 
     ## spherical slicing (Q space only)
     state.setdefault("sph_show", False)
@@ -1163,13 +1167,24 @@ def create_server():
         origin[0], origin[1], origin[2] = center
         origin[axis_index] = coord
 
-        # Tilt: rotate the plane normal so the slice is no
-        # longer perpendicular to its pure axis. X/Y planes tilt about Qz; the
-        # Z plane tilts about Qx (rotating a Z normal about Qz is a no-op).
-        tilt = math.radians(_float(getattr(state, f"slice_{axis}_tilt", 0.0), 0.0))
-        if tilt:
-            rot_axis = 0 if axis == "z" else 2
-            normal = _rotate_vector(normal, rot_axis, tilt)
+        # Tilt: rotate the plane normal so the slice is no longer perpendicular
+        # to its pure axis. Each plane can tilt about the two world axes other
+        # than its own: the X plane tilts about Qz and Qy, the Y plane about Qz
+        # and Qx, and the Z plane about Qx and Qy. Rotating a plane's normal
+        # about its own axis is a no-op, so those combinations are omitted. Each
+        # tilt has its own state key ``slice_{axis}_tilt{rot}``; the rotations
+        # compose (first about the earlier axis, then the later one).
+        _tilt_rot_axes = {
+            "x": (("z", 2), ("y", 1)),
+            "y": (("z", 2), ("x", 0)),
+            "z": (("x", 0), ("y", 1)),
+        }[axis]
+        for _rot_name, _rot_axis in _tilt_rot_axes:
+            tilt = math.radians(
+                _float(getattr(state, f"slice_{axis}_tilt{_rot_name}", 0.0), 0.0)
+            )
+            if tilt:
+                normal = _rotate_vector(normal, _rot_axis, tilt)
 
         mapper = slice_mappers[axis]
         mapper.SetInputData(current_image)
@@ -1258,18 +1273,30 @@ def create_server():
         coords[:, 1] = np.tile(ys, nz)
         coords[:, 2] = np.repeat(zc, n_theta)
 
-        # Tilt: rotate the whole tube about Qx, pivoting on the
-        # z-center so the cylinder axis leans out of Qz into the Qy-Qz plane
-        # instead of staying centered on the z axis. tilt = 0 leaves the classic
-        # z-aligned tube untouched.
-        tilt = math.radians(_float(getattr(state, "cyl_tilt", 0.0), 0.0))
-        if tilt:
+        # Tilt: rotate the whole tube about Qx and/or Qy, pivoting on the
+        # z-center so the cylinder axis leans out of Qz instead of staying
+        # centered on the z axis. cyl_tiltx leans the axis into the Qy-Qz plane
+        # and cyl_tilty into the Qx-Qz plane; both zero leaves the classic
+        # z-aligned tube untouched. The rotations compose about the shared
+        # z-center (tiltx first, then tilty).
+        tiltx = math.radians(_float(getattr(state, "cyl_tiltx", 0.0), 0.0))
+        tilty = math.radians(_float(getattr(state, "cyl_tilty", 0.0), 0.0))
+        if tiltx or tilty:
             z_mid = 0.5 * (zc[0] + zc[-1]) if nz else 0.0
-            c, s = math.cos(tilt), math.sin(tilt)
-            yv = coords[:, 1].copy()
-            zv = coords[:, 2] - z_mid
-            coords[:, 1] = yv * c - zv * s
-            coords[:, 2] = z_mid + yv * s + zv * c
+            coords[:, 2] -= z_mid
+            if tiltx:
+                c, s = math.cos(tiltx), math.sin(tiltx)
+                yv = coords[:, 1].copy()
+                zv = coords[:, 2].copy()
+                coords[:, 1] = yv * c - zv * s
+                coords[:, 2] = yv * s + zv * c
+            if tilty:
+                c, s = math.cos(tilty), math.sin(tilty)
+                xv = coords[:, 0].copy()
+                zv = coords[:, 2].copy()
+                coords[:, 0] = xv * c + zv * s
+                coords[:, 2] = -xv * s + zv * c
+            coords[:, 2] += z_mid
 
         # Nearest voxel index per vertex (clamped into range like np.argmin), so
         # every vertex carries a real intensity even after the tube is tilted.
@@ -3604,7 +3631,12 @@ def create_server():
     # state.change observer reliably sees the flushed value (the input's own
     # ``change=ctrl.update_slices`` can fire before v-model syncs), so the
     # oblique slice re-renders immediately.
-    @state.change("slice_x_tilt", "slice_y_tilt", "slice_z_tilt", "cyl_tilt")
+    @state.change(
+        "slice_x_tiltz", "slice_x_tilty",
+        "slice_y_tiltz", "slice_y_tiltx",
+        "slice_z_tiltx", "slice_z_tilty",
+        "cyl_tiltx", "cyl_tilty",
+    )
     def _on_slice_tilt_change(**kwargs):
         if current_volume is None:
             return
@@ -4530,25 +4562,36 @@ def create_server():
                         v_model=("slice_opacity", ""), type="number", min="0", max="1",
                         step="0.1", change=ctrl.update_slices, style=_pl_inp,
                     )
-                    # Tilt of the slice plane. Each axis binds its own angle so
-                    # the plane can be oblique instead of perpendicular to the
-                    # pure x/y/z axis; X/Y tilt about Qz and Z tilts about Qx
-                    # (see _update_ortho_slice).
+                    # Tilt of the slice plane. Each plane can tilt about the two
+                    # world axes other than its own, so it can be oblique in two
+                    # directions instead of perpendicular to the pure x/y/z axis:
+                    # X tilts about Qz and Qy, Y about Qz and Qx, Z about Qx and
+                    # Qy (see _update_ortho_slice). Each rotation binds its own
+                    # ``slice_{axis}_tilt{rot}`` slider.
                     html.Label("Tilt (\u00b0)", style=_pl_lbl)
-                    for _ax in ("x", "y", "z"):
-                        with html.Div(
-                            v_if=f"selected_layer === 'slice_{_ax}'",
-                            style="display:flex; align-items:center; gap:8px;",
-                        ):
-                            html.Input(
-                                v_model=(f"slice_{_ax}_tilt", ""), type="range",
-                                min="-90", max="90", step="1",
-                                change=ctrl.update_slices, style="flex:1;",
-                            )
-                            html.Span(
-                                "{{ " + f"slice_{_ax}_tilt" + " }}\u00b0",
-                                style="width:42px; font-size:0.8rem; text-align:right;",
-                            )
+                    for _ax, _rots in (
+                        ("x", ("z", "y")),
+                        ("y", ("z", "x")),
+                        ("z", ("x", "y")),
+                    ):
+                        with html.Div(v_if=f"selected_layer === 'slice_{_ax}'"):
+                            for _rot in _rots:
+                                with html.Div(
+                                    style="display:flex; align-items:center; gap:8px; margin-top:4px;",
+                                ):
+                                    html.Span(
+                                        f"Q{_rot}",
+                                        style="width:22px; font-size:0.8rem; color:#bbbbbb;",
+                                    )
+                                    html.Input(
+                                        v_model=(f"slice_{_ax}_tilt{_rot}", ""), type="range",
+                                        min="-90", max="90", step="1",
+                                        change=ctrl.update_slices, style="flex:1;",
+                                    )
+                                    html.Span(
+                                        "{{ " + f"slice_{_ax}_tilt{_rot}" + " }}\u00b0",
+                                        style="width:42px; font-size:0.8rem; text-align:right;",
+                                    )
 
                 # Cylindrical probe surface.
                 with html.Div(v_if="selected_layer === 'cylinder'"):
@@ -4575,18 +4618,26 @@ def create_server():
                     )
                     # Tilt of the cylinder axis away from Qz (see
                     # _update_cylinder), so the tube need not be centered on the
-                    # z axis.
+                    # z axis. Qx leans the axis into the Qy-Qz plane, Qy into the
+                    # Qx-Qz plane; each binds its own slider.
                     html.Label("Tilt (\u00b0)", style=_pl_lbl)
-                    with html.Div(style="display:flex; align-items:center; gap:8px;"):
-                        html.Input(
-                            v_model=("cyl_tilt", ""), type="range",
-                            min="-90", max="90", step="1",
-                            change=ctrl.update_slices, style="flex:1;",
-                        )
-                        html.Span(
-                            "{{ cyl_tilt }}\u00b0",
-                            style="width:42px; font-size:0.8rem; text-align:right;",
-                        )
+                    for _rot in ("x", "y"):
+                        with html.Div(
+                            style="display:flex; align-items:center; gap:8px; margin-top:4px;",
+                        ):
+                            html.Span(
+                                f"Q{_rot}",
+                                style="width:22px; font-size:0.8rem; color:#bbbbbb;",
+                            )
+                            html.Input(
+                                v_model=(f"cyl_tilt{_rot}", ""), type="range",
+                                min="-90", max="90", step="1",
+                                change=ctrl.update_slices, style="flex:1;",
+                            )
+                            html.Span(
+                                "{{ " + f"cyl_tilt{_rot}" + " }}\u00b0",
+                                style="width:42px; font-size:0.8rem; text-align:right; margin-right:4px;",
+                            )
 
                 # Spherical probe surface.
                 with html.Div(v_if="selected_layer === 'sphere'"):
