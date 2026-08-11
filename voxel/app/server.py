@@ -1401,12 +1401,10 @@ def create_server():
         """Draw +Qx/+Qy/+Qz direction arrows from the reciprocal-space origin.
 
         Mirrors napari's "World axes" overlay. The arrows are rooted at the
-        origin ``(0, 0, 0)`` -- clamped into the data bounds so the gizmo stays
-        on-screen if the origin lies outside the regridded volume -- and point
-        toward increasing Qx (magenta), Qy (green) and Qz (cyan). This is a
-        visual orientation cue only; it does not alter the coordinate values
-        shown elsewhere. Labels switch to +H/+K/+L in crystallographic space to
-        match the outline-box corner labels.
+        true reciprocal-space origin ``(0, 0, 0)``. This is a visual orientation cue
+        only; it does not alter the coordinate values shown elsewhere. Labels
+        switch to +H/+K/+L in crystallographic space to match the outline-box
+        corner labels.
 
         This routine only fixes the arrows' *origin*, colors, labels and
         visibility. The actual on-screen length is set by
@@ -1423,22 +1421,11 @@ def create_server():
                 label.VisibilityOff()
             return
 
-        ax_x = np.asarray(current_axes[0], dtype=float)
-        ax_y = np.asarray(current_axes[1], dtype=float)
-        ax_z = np.asarray(current_axes[2], dtype=float)
-
-        # Root the arrows at the reciprocal-space origin (0, 0, 0). If the
-        # origin falls outside the regridded extents, clamp each component into
-        # the data bounds so the gizmo remains visible next to the volume.
-        def _clamp(value, axis):
-            lo, hi = float(axis[0]), float(axis[-1])
-            if lo > hi:
-                lo, hi = hi, lo
-            return min(max(value, lo), hi)
-
-        ox = _clamp(0.0, ax_x)
-        oy = _clamp(0.0, ax_y)
-        oz_true = _clamp(0.0, ax_z)
+        # Root the arrows at the true reciprocal-space origin (0, 0, 0), even
+        # when it lies outside the regridded extents.
+        ox = 0.0
+        oy = 0.0
+        oz_true = 0.0
         # The z world axis is mirrored (see _set_volume_data) so +Qz points up
         # like napari: root the gizmo at world z = -oz_true and make the +Qz
         # arrow point along world -z (via world_axes_geom["signs"]).
