@@ -123,6 +123,8 @@ def create_server():
     server = get_server(name="voxel_web", client_type="vue3")
     state, ctrl = server.state, server.controller
 
+    state.setdefault("current_view", "RSM")
+
     # Data tab
     state.setdefault("loader_mode", "CMS")
     state.setdefault("setup_path", yaml_path())
@@ -3784,10 +3786,32 @@ def create_server():
                 ),
             )
             with html.Div():
-                html.H2("Voxel", style="margin:0; font-size:1.3rem;")
-                html.P(
-                    "Load experiment profiles, build 3D RSM volumes, and inspect results in the browser.",
-                    style="margin:0; font-size:0.9rem; color:#666;",
+                html.H1("Voxel", style="margin:0; font-size:1.5rem;")
+                #html.P(
+                #    "Load experiment profiles, build 3D RSM volumes, and inspect results in the browser.",
+                #    style="margin:0; font-size:0.9rem; color:#666;",
+                #)
+            with html.Div(  # right-aligned view selector buttons
+                style=(
+                    "margin-left:auto; display:flex; align-items:center; gap:4px; "
+                    "font-size:1.3rem; line-height:1;"
+                )
+            ):
+                html.Button(
+                    "RSM",
+                    click="current_view = 'RSM'",
+                    style=(
+                        "font-size:1.3rem; line-height:1; background:none; border:none; "
+                        "cursor:pointer; padding:4px 10px; color:rgba(0,0,0,0.87);"
+                    ),
+                )
+                html.Button(
+                    "Tomography",
+                    click="current_view = 'Tomography'",
+                    style=(
+                        "font-size:1.3rem; line-height:1; background:none; border:none; "
+                        "cursor:pointer; padding:4px 10px; color:rgba(0,0,0,0.87);"
+                    ),
                 )
         with html.Div(  # main container row holding the left control panel and the right 3D view
             style=( 
