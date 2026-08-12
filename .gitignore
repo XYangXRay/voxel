@@ -16,3 +16,15 @@ __pycache__/
 
 # Environment variables
 .env
+
+example_files/
+
+sim_data/
+
+sim_catalog.db
+
+tests/
+
+setup/
+
+DATA_FLOW.txt
