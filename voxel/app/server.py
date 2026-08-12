@@ -3796,7 +3796,7 @@ def create_server():
                 "background:#ffffff; color:rgba(0,0,0,0.87); font-family:sans-serif;"
             )
         ):
-            with html.Div(
+            with html.Div( # left control panel with tabs
                 id="control_panel",
                 v_show="sidebar_open",
                 style=( # left control panel: width is adjusted via the drag grip on its right edge
@@ -3808,14 +3808,23 @@ def create_server():
                 # Each tab is a horizontal bar (name on the left, arrow on the
                 # right). Clicking a bar expands that tab and collapses any
                 # other, so only 0 or 1 tab is open at a time.
-                _bar = (
-                    "display:flex; align-items:center; justify-content:space-between; "
-                    "cursor:pointer; padding:12px 14px; margin-bottom:6px; "
-                    "background:#f0f0f3; border:1px solid #dcdce0; border-radius:6px; "
-                    "font-weight:600; user-select:none;"
-                )
+                # Reactive bar style: when this tab is the open one, the bar
+                # background goes light blue and its border medium blue (napari
+                # layer-selection style). Returns a trame style *binding* tuple
+                # (Vue template literal) so it updates live with ``open_tab``.
+                def _bar_style(key):
+                    return (
+                        "`display:flex; align-items:center; justify-content:space-between; "
+                        "cursor:pointer; padding:12px 14px; margin-bottom:6px; "
+                        f"background:${{open_tab === '{key}' ? '#d4e4fa' : '#f0f0f3'}}; "
+                        f"border:1px solid ${{open_tab === '{key}' ? '#a0b8d4' : '#dcdce0'}}; "
+                        "border-radius:6px; font-weight:600; user-select:none;`",
+                    )
+
+                # The panel only renders while its tab is open, so its outline is
+                # always the light-blue selected colour.
                 _panel = (
-                    "border:1px solid #e0e0e0; border-top:none; border-radius:0 0 6px 6px; "
+                    "border:1px solid #d4e4fa; border-top:none; border-radius:0 0 6px 6px; "
                     "padding:14px; margin:-6px 0 10px 0; background:#fbfbfc;"
                 )
                 _lbl = "display:block; margin-top:10px; font-size:0.85rem; color:#444;"
@@ -3824,7 +3833,8 @@ def create_server():
 
                 # ===================== DATA TAB =====================
                 with html.Div(
-                    style=_bar, click="open_tab = open_tab === 'data' ? '' : 'data'"
+                    style=_bar_style("data"),
+                    click="open_tab = open_tab === 'data' ? '' : 'data'",
                 ):
                     html.Span("Data")
                     html.Span("{{ open_tab === 'data' ? '\u25BC' : '\u25B6' }}")
@@ -3918,7 +3928,7 @@ def create_server():
 
                 # ===================== BUILD TAB =====================
                 with html.Div(
-                    style=_bar, click="open_tab = open_tab === 'build' ? '' : 'build'"
+                    style=_bar_style("build"), click="open_tab = open_tab === 'build' ? '' : 'build'"
                 ):
                     html.Span("Build")
                     html.Span("{{ open_tab === 'build' ? '\u25BC' : '\u25B6' }}")
@@ -3965,7 +3975,7 @@ def create_server():
 
                 # ===================== VIEW TAB =====================
                 with html.Div(
-                    style=_bar, click="open_tab = open_tab === 'view' ? '' : 'view'"
+                    style=_bar_style("view"), click="open_tab = open_tab === 'view' ? '' : 'view'"
                 ):
                     html.Span("View")
                     html.Span("{{ open_tab === 'view' ? '\u25BC' : '\u25B6' }}")
@@ -4027,7 +4037,7 @@ def create_server():
 
                 # ===================== ANALYZE TAB =====================
                 with html.Div(
-                    style=_bar, click="open_tab = open_tab === 'analyze' ? '' : 'analyze'"
+                    style=_bar_style("analyze"), click="open_tab = open_tab === 'analyze' ? '' : 'analyze'"
                 ):
                     html.Span("Analyze")
                     html.Span("{{ open_tab === 'analyze' ? '\u25BC' : '\u25B6' }}")
