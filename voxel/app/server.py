@@ -3786,11 +3786,11 @@ def create_server():
                 ),
             )
             with html.Div():
-                html.H1("Voxel", style="margin:0; font-size:1.5rem;")
-                #html.P(
-                #    "Load experiment profiles, build 3D RSM volumes, and inspect results in the browser.",
-                #    style="margin:0; font-size:0.9rem; color:#666;",
-                #)
+                html.H2("Voxel", style="margin:0; font-size:1.5rem;")
+                html.P(
+                    "Data Processing, Reconstruction, and Visualisation for 3D Reciprocal Space Maps and Tomography.",
+                    style="margin:0; font-size:0.9rem; color:#666;",
+                )
             with html.Div(  # right-aligned view selector buttons
                 style=(
                     "margin-left:auto; display:flex; align-items:center; gap:4px; "
@@ -3801,16 +3801,24 @@ def create_server():
                     "RSM",
                     click="current_view = 'RSM'",
                     style=(
-                        "font-size:1.3rem; line-height:1; background:none; border:none; "
-                        "cursor:pointer; padding:4px 10px; color:rgba(0,0,0,0.87);"
+                        "`background:none; border:none; cursor:pointer; padding:4px 10px; "
+                        "font-size:1.15rem; line-height:1; "
+                        "color:${current_view === 'RSM' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
+                        "transition:color 0.15s ease;`",
                     ),
+                )
+                html.Span(
+                    "|",
+                    style="color:#c0c0c0; user-select:none;",
                 )
                 html.Button(
                     "Tomography",
                     click="current_view = 'Tomography'",
                     style=(
-                        "font-size:1.3rem; line-height:1; background:none; border:none; "
-                        "cursor:pointer; padding:4px 10px; color:rgba(0,0,0,0.87);"
+                        "`background:none; border:none; cursor:pointer; padding:4px 10px; "
+                        "font-size:1.15rem; line-height:1; "
+                        "color:${current_view === 'Tomography' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
+                        "transition:color 0.15s ease;`",
                     ),
                 )
         with html.Div(  # main container row holding the left control panel and the right 3D view
