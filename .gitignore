@@ -17,6 +17,7 @@ __pycache__/
 # Environment variables
 .env
 
+
 example_files/
 
 sim_data/
@@ -28,3 +29,6 @@ tests/
 setup/
 
 DATA_FLOW.txt
+
+Dockerfile
+.dockerignore
