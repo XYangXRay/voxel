@@ -24,7 +24,8 @@ sim_data/
 
 sim_catalog.db
 
-tests/
+tests/*
+!tests/test_import_isolation.py
 
 setup/
 

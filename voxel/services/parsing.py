@@ -13,9 +13,6 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from .backend import RSMDataloader_CMS
-from .backend import RSMDataLoader_ISR
-
 
 def _float(value: Optional[object], default: float) -> float:
     try:
@@ -41,6 +38,10 @@ def _scan_numbers_in_dir_CMS(tiff_dir: Optional[str]) -> list:
     directory = Path(_ensure_path(tiff_dir)).expanduser()
     if not directory.is_dir():
         return []
+    # Lazy import: keep this shared parsing module free of the heavy RSM engine
+    # (backend -> rsm3d -> xrayutilities) at import time; it is only pulled when
+    # a CMS scan directory is actually parsed.
+    from .backend import RSMDataloader_CMS
     pattern = re.compile(RSMDataloader_CMS.SCAN_REGEX)
     scans = []
     for path in sorted(

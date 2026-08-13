@@ -71,16 +71,6 @@ from trame.widgets import html
 from trame_client.widgets.html import HtmlElement  # base class for raw SVG tags
 from trame.widgets.vtk import VtkRemoteView
 
-# --- pipeline backend (STAGE 1 & 2) ------------------------------------
-from voxel.services.backend import (
-    RSMDataLoader_ISR,
-    RSMDataloader_CMS,
-    write_rsm_volume_to_vtr_compat,
-    RSMBuilder,
-    DEFAULTS_ENV,
-    yaml_path,
-)
-
 # --- data-access / state coercion (services) ---------------------------
 from voxel.services.parsing import (
     _float,
@@ -125,10 +115,16 @@ from voxel.ui.assets import (
 # into the exact same shell.
 from voxel.features.base import FeatureContext
 from voxel.features.rsm.feature import RSMFeature
-from voxel.features.rsm import pipeline as rsm_pipeline
 
 
 def create_server():
+    # Lazy, feature-local imports keep ``import voxel.app.server`` free of the
+    # heavy RSM engine (backend -> rsm3d -> xrayutilities), so the shared
+    # surface stays import-clean (guarded by tests/test_import_isolation.py).
+    # The RSM app pulls these when it builds; a future tomography app won't.
+    from voxel.services.backend import write_rsm_volume_to_vtr_compat, yaml_path
+    from voxel.features.rsm import pipeline as rsm_pipeline
+
     server = get_server(name="voxel_web", client_type="vue3")
     state, ctrl = server.state, server.controller
 
