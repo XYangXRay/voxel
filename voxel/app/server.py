@@ -118,11 +118,13 @@ from voxel.ui.assets import (
     _EYE_OFF_SVG,
 )
 
-# --- feature UI slots (features) ---------------------------------------
-# Feature-specific left-panel tabs + layer-property editors. The shared shell
-# (below) owns the panel container / accordion / status / 3D view / layer list;
-# each feature supplies its own tabs. RSM today; tomography will add a sibling.
-from voxel.features.rsm import ui as rsm_ui
+# --- feature contract (features) ---------------------------------------
+# The shell hosts one feature through a stable contract: the feature supplies
+# its own left-panel tabs + layer-property editors (and, in Stage 2, its VTK
+# scene + step handlers). RSM today; tomography will add a sibling that plugs
+# into the exact same shell.
+from voxel.features.base import FeatureContext
+from voxel.features.rsm.feature import RSMFeature
 
 
 def create_server():
@@ -3709,9 +3711,11 @@ def create_server():
             f"(scans {first[0]}\u2013{first[-1]})."
         )
 
-    # Handles the feature UI slots need: the trame controller and the file
-    # browser opener. A future tomography feature builds an equivalent ctx.
-    ctx = types.SimpleNamespace(ctrl=ctrl, fb_open=_fb_open)
+    # The active feature and the context the shell hands it. The feature owns
+    # its tabs + layer-property editors (and, later, its scene + controllers);
+    # a future tomography build selects a different VoxelFeature here.
+    feature = RSMFeature()
+    ctx = FeatureContext(server=server, state=state, ctrl=ctrl, fb_open=_fb_open)
 
     with DivLayout(server) as layout:
         # NOTE: VtkRemoteView is instantiated later, inside the right-hand 3D
@@ -3847,9 +3851,9 @@ def create_server():
                 )
             ):
                 # Feature-specific accordion tabs (Data / Build / View /
-                # Analyze). Provided by the RSM feature module so a future
+                # Analyze). Provided by the active feature so a future
                 # tomography feature can supply its own tabs here instead.
-                rsm_ui.build_tabs(ctx)
+                feature.build_tabs(ctx)
 
                 # ---- Status (always visible, below the accordion) ----------
                 html.Hr(style="border-color:#e0e0e0; margin:16px 0;")
@@ -4067,9 +4071,9 @@ def create_server():
                 ),
             ):
                 # Feature-specific per-layer property editors (volume /
-                # slice / cylinder / sphere ...). Provided by the RSM feature
-                # module so a future tomography feature can supply its own.
-                rsm_ui.build_layer_controls(ctx)
+                # slice / cylinder / sphere ...). Provided by the active
+                # feature so a future tomography feature can supply its own.
+                feature.build_layer_controls(ctx)
 
                 html.Hr(style="border-color:#2a2a2e; margin:6px 0 12px;")
                 html.Strong(
