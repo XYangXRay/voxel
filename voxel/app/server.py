@@ -3528,36 +3528,36 @@ def create_server():
                     "Data Processing, Reconstruction, and Visualisation for 3D Reciprocal Space Maps and Tomography.",
                     style="margin:0; font-size:0.9rem; color:#666;",
                 )
-            with html.Div(  # right-aligned view selector buttons
-                style=(
-                    "margin-left:auto; display:flex; align-items:center; gap:4px; "
-                    "font-size:1.3rem; line-height:1;"
-                )
-            ):
-                html.Button(
-                    "RSM",
-                    click="current_view = 'RSM'",
-                    style=(
-                        "`background:none; border:none; cursor:pointer; padding:4px 10px; "
-                        "font-size:1.15rem; line-height:1; "
-                        "color:${current_view === 'RSM' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
-                        "transition:color 0.15s ease;`",
-                    ),
-                )
-                html.Span(
-                    "|",
-                    style="color:#c0c0c0; user-select:none;",
-                )
-                html.Button(
-                    "Tomography",
-                    click="current_view = 'Tomography'",
-                    style=(
-                        "`background:none; border:none; cursor:pointer; padding:4px 10px; "
-                        "font-size:1.15rem; line-height:1; "
-                        "color:${current_view === 'Tomography' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
-                        "transition:color 0.15s ease;`",
-                    ),
-                )
+            # with html.Div(  # right-aligned view selector buttons
+            #     style=(
+            #         "margin-left:auto; display:flex; align-items:center; gap:4px; "
+            #         "font-size:1.3rem; line-height:1;"
+            #     )
+            # ):
+            #     html.Button(
+            #         "RSM",
+            #         click="current_view = 'RSM'",
+            #         style=(
+            #             "`background:none; border:none; cursor:pointer; padding:4px 10px; "
+            #             "font-size:1.15rem; line-height:1; "
+            #             "color:${current_view === 'RSM' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
+            #             "transition:color 0.15s ease;`",
+            #         ),
+            #     )
+            #     html.Span(
+            #         "|",
+            #         style="color:#c0c0c0; user-select:none;",
+            #     )
+            #     html.Button(
+            #         "Tomography",
+            #         click="current_view = 'Tomography'",
+            #         style=(
+            #             "`background:none; border:none; cursor:pointer; padding:4px 10px; "
+            #             "font-size:1.15rem; line-height:1; "
+            #             "color:${current_view === 'Tomography' ? '#4f9aff' : 'rgba(0,0,0,0.87)'}; "
+            #             "transition:color 0.15s ease;`",
+            #         ),
+            #     )
         with html.Div(  # main container row holding the left control panel and the right 3D view
             style=( 
                 "display:flex; flex-direction:row; align-items:stretch; "
